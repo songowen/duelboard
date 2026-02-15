@@ -1,5 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment
+
+Create `apps/web/.env.local` from `apps/web/.env.example`.
+
+```bash
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+```
+
 ## Getting Started
 
 First, run the development server:
@@ -15,6 +25,29 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Yacht Dice Online (2P Room) local test
+
+1. Apply Supabase migrations from repo root:
+
+```bash
+supabase db push
+```
+
+2. Start web app:
+
+```bash
+cd apps/web
+pnpm dev
+```
+
+3. Open [http://localhost:3000/games/yacht-dice/online](http://localhost:3000/games/yacht-dice/online)
+4. Create a room and confirm invite link auto-copies.
+5. Open the invite link in another browser/incognito window, enter nickname, and join.
+6. Verify turn-by-turn sync:
+   - roll / hold / score actions update both windows
+   - refresh either window and confirm state restores from DB
+   - non-participants cannot read room/game state due to RLS
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
