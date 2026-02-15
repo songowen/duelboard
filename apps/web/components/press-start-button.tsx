@@ -2,7 +2,7 @@
 
 export function PressStartButton() {
   const onStart = () => {
-    const target = document.getElementById("games-preview");
+    const target = document.getElementById("games");
     if (!target) return;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -13,10 +13,10 @@ export function PressStartButton() {
     <button
       type="button"
       onClick={onStart}
-      className="press-start rounded-md border-2 border-cyan-200/90 bg-slate-950/70 px-6 py-3 text-xs uppercase tracking-[0.25em] text-cyan-100 backdrop-blur-sm transition hover:bg-slate-900/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
-      aria-label="Scroll to game list"
+      className="press-start-bob bg-transparent p-0 text-3xl uppercase tracking-[0.1em] text-[#f5f5f5] hover:text-[#f6d32d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f5f5f5]"
+      aria-label="Scroll to games section"
     >
-      Press Start
+      ▼ Press Start
     </button>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import Image from "next/image";
+import { PixelObjects } from "@/components/home/pixel-objects";
+import { RetroGameCard } from "@/components/home/retro-game-card";
 import { PressStartButton } from "@/components/press-start-button";
 
 export const metadata: Metadata = {
@@ -12,58 +13,73 @@ export const metadata: Metadata = {
 const featuredGames = [
   {
     title: "Yacht Dice",
-    summary: "Roll smart and score across classic category rows.",
+    summary: "Roll, hold, and outscore the rival in quick retro rounds.",
+    href: "/games/yacht-dice/vs-ai",
+    tone: "yellow" as const,
+    imageSrc: "/hero.gif",
   },
   {
-    title: "Tic-Tac-Toe",
-    summary: "Fast rounds for quick duels with clean 3x3 strategy.",
+    title: "Sea Battle",
+    summary: "Call your shots and sink every ship before your opponent.",
+    href: "/games",
+    tone: "red" as const,
+    imageSrc: "/hero.gif",
   },
   {
-    title: "Nim",
-    summary: "Take piles with perfect play and trap your opponent.",
+    title: "Game 3",
+    summary: "Fast-paced duel mode with short sessions and rematches.",
+    href: "/games",
+    tone: "yellow" as const,
+    imageSrc: "/hero.gif",
+  },
+  {
+    title: "Game 4",
+    summary: "Simple rules, tight choices, and one last winning move.",
+    href: "/games",
+    tone: "red" as const,
+    imageSrc: "/hero.gif",
   },
 ];
 
 export default function HomePage() {
   return (
-    <div className="space-y-14">
-      <section className="relative isolate flex min-h-screen items-center justify-center overflow-hidden rounded-2xl border border-cyan-300/40 bg-slate-900/70 p-4 sm:p-6">
-        <div className="relative h-[68vh] min-h-[360px] w-full max-w-5xl overflow-hidden rounded-xl border border-cyan-200/40 bg-slate-950 shadow-[0_0_40px_rgba(34,211,238,0.2)]">
-          <Image
-            src="/hero.gif"
-            alt="Duelboard landing hero animation"
-            fill
-            priority
-            className="object-cover"
-            sizes="(max-width: 1024px) 100vw, 1024px"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/10 via-transparent to-slate-900/25" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <PressStartButton />
+    <div className="relative bg-black pb-16">
+      <PixelObjects />
+
+      <section className="relative z-10 px-0 pt-6 sm:px-2">
+        <div className="mx-auto max-w-6xl">
+          <div className="relative mx-auto w-full max-w-[1220px] pb-16 sm:pb-20">
+            <Image
+              src="/hero.gif"
+              alt="Retro gamers around a CRT monitor"
+              width={1220}
+              height={686}
+              priority
+              className="h-auto w-full [image-rendering:pixelated]"
+            />
+            <div className="absolute inset-x-0 bottom-0 flex translate-y-[110%] justify-center">
+              <PressStartButton />
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="games-preview" className="scroll-mt-8 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm uppercase tracking-[0.2em] text-cyan-200">Game Preview</h2>
-          <Link
-            href="/games"
-            className="rounded border border-emerald-300/60 px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-emerald-200 transition hover:bg-emerald-300/10"
-          >
-            View all games
-          </Link>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {featuredGames.map((game) => (
-            <article
-              key={game.title}
-              className="rounded-lg border border-slate-700 bg-slate-900/70 p-4"
-            >
-              <h3 className="mb-2 text-xs uppercase tracking-[0.15em] text-cyan-100">{game.title}</h3>
-              <p className="text-[11px] leading-6 text-slate-300">{game.summary}</p>
-            </article>
-          ))}
+      <section id="games" className="relative z-10 scroll-mt-24 px-2 pt-24 sm:px-4">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="text-center text-5xl uppercase tracking-[0.12em] text-[#f5f5f5]">GAMES</h2>
+
+          <div className="mt-16 grid grid-cols-1 gap-y-16 md:grid-cols-2 md:gap-x-10">
+            {featuredGames.map((game) => (
+              <RetroGameCard
+                key={game.title}
+                title={game.title}
+                summary={game.summary}
+                href={game.href}
+                imageSrc={game.imageSrc}
+                tone={game.tone}
+              />
+            ))}
+          </div>
         </div>
       </section>
     </div>
