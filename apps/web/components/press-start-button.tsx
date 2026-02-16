@@ -2,11 +2,9 @@
 
 export function PressStartButton() {
   const onStart = () => {
-    const target = document.getElementById("games");
-    if (!target) return;
-
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    const behavior: ScrollBehavior = reduceMotion ? "auto" : "smooth";
+    document.getElementById("games")?.scrollIntoView({ behavior, block: "start" });
   };
 
   return (
