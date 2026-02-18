@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import VsAiClient from "@/app/games/yacht-dice/vs-ai/vs-ai-client";
+import { VsAiContainer } from "@/components/games/yacht-dice/containers/VsAiContainer";
 import { getMessages } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 
@@ -12,5 +12,5 @@ export const metadata: Metadata = {
 export default async function YachtDiceVsAiPage() {
   const locale = await getRequestLocale();
   const t = getMessages(locale).yachtVsAi;
-  return <VsAiClient locale={locale} text={t} />;
+  return <VsAiContainer locale={locale} text={t} />;
 }

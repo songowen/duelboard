@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import OnlineClient from "@/app/games/yacht-dice/online/online-client";
+import { OnlineContainer } from "@/components/games/yacht-dice/containers/OnlineContainer";
 import { getMessages } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 
@@ -15,7 +15,7 @@ export default async function YachtDiceOnlinePage() {
   const t = getMessages(locale).yachtOnline;
   return (
     <Suspense fallback={<div className="p-6 text-sm text-slate-300">{t.loading}</div>}>
-      <OnlineClient locale={locale} text={t} />
+      <OnlineContainer locale={locale} text={t} />
     </Suspense>
   );
 }

@@ -1,0 +1,38 @@
+---
+title: "듀얼보드 소개"
+description: "듀얼보드가 어떤 2인 게임 플랫폼인지, 어떤 구조로 운영되는지 소개합니다."
+date: "2026-02-18"
+slug: "about"
+lang: "ko"
+tags:
+  - "소개"
+  - "플랫폼"
+  - "듀얼보드"
+relatedPosts:
+  - "best-2-player-games"
+relatedGames:
+  - "yacht-dice"
+  - "sea-battle"
+---
+
+Duelboard는 **짧고 명확한 2인 대전**에 집중한 웹게임 플랫폼입니다.
+
+## 우리가 만드는 것
+
+- 룰을 빠르게 이해할 수 있는 대전 게임
+- 새 게임을 빠르게 추가할 수 있는 공통 플랫폼 레이어
+- AI 대전/온라인 1:1 모두에서 일관된 UX
+
+## 구조 원칙
+
+1. `app/`는 라우팅만 담당
+2. 게임별 로직/컨테이너는 `components/games/{slug}`에 배치
+3. 공통 UI/유틸은 `components/game-core`에서 재사용
+4. 게임 공개 상태는 타입 안전한 registry에서 단일 관리
+
+## 이 구조의 장점
+
+게임 규칙/온라인 계약은 안정적으로 유지하면서도, 콘텐츠/SEO/UI 개선을 빠르게 반복할 수 있습니다.
+
+관련 글: [/blog/best-2-player-games](/blog/best-2-player-games)  
+지금 플레이: [/games/yacht-dice](/games/yacht-dice)

@@ -1,20 +1,23 @@
 import type { MetadataRoute } from "next";
 import { getAllPosts } from "@/lib/blog";
+import { gameRegistry, getGameModeHref } from "@/lib/registry";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://duelboard.gg";
-  const staticRoutes = [
+  const baseStaticRoutes = [
     "",
     "/games",
-    "/games/yacht-dice",
-    "/games/yacht-dice/vs-ai",
-    "/games/yacht-dice/online",
     "/blog",
     "/about",
     "/contact",
+    "/privacy",
     "/privacy-policy",
     "/terms",
   ];
+
+  const gameRoutes = gameRegistry.flatMap((game) => [game.href, ...game.modes.map((mode) => getGameModeHref(game.slug, mode))]);
+
+  const staticRoutes = [...baseStaticRoutes, ...gameRoutes];
 
   const staticEntries = staticRoutes.map((route) => ({
     url: `${base}${route}`,

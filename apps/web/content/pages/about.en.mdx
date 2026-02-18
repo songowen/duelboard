@@ -1,0 +1,37 @@
+---
+title: "About Duelboard"
+description: "What Duelboard is and how the 2-player game platform is structured."
+date: "2026-02-18"
+slug: "about"
+lang: "en"
+tags:
+  - "about"
+  - "platform"
+  - "duelboard"
+relatedPosts:
+  - "best-2-player-games"
+relatedGames:
+  - "yacht-dice"
+  - "sea-battle"
+---
+
+Duelboard is a browser-based **2-player game platform** focused on quick rounds and clear competitive UX.
+
+## What we are building
+
+- Fast-to-learn head-to-head games
+- Reusable platform layer for adding new games
+- Consistent UI patterns across solo AI and online 1v1 modes
+
+## Architecture principles
+
+1. Routing stays in `app/`.
+2. Game logic and containers stay in `components/games/{slug}`.
+3. Shared primitives (layout, buttons, tooltip, i18n utilities) stay in `components/game-core`.
+4. Game availability is controlled by a typed registry.
+
+## Why this matters
+
+This structure keeps gameplay contracts stable while making content, SEO, and page-level UX easier to iterate.
+
+Read more in [/blog/best-2-player-games](/blog/best-2-player-games) and play [/games/yacht-dice](/games/yacht-dice).

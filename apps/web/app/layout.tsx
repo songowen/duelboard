@@ -76,11 +76,11 @@ export default async function RootLayout({
                   width={148}
                   height={50}
                   priority
-                  className="h-6 w-auto origin-left scale-[4.4] [image-rendering:pixelated] sm:h-9 sm:scale-[5]"
+                  className="h-6 w-auto origin-left translate-y-[5px] scale-[4.4] [image-rendering:pixelated] sm:h-9 sm:translate-y-[5px] sm:scale-[5]"
                 />
               </Link>
 
-              <div className="hidden items-center gap-2 sm:gap-4 md:flex">
+              <div className="hidden items-center gap-2 sm:gap-6 md:flex">
                 <HeaderNav labels={t.nav} locale={locale} />
                 <LanguageSwitcher locale={locale} />
               </div>
@@ -102,7 +102,7 @@ export default async function RootLayout({
                 <ul className="flex items-center gap-4">
                   <li>
                     <Link
-                      href="/privacy-policy"
+                      href="/privacy"
                       className="text-[#f5f5f5] hover:text-[#f6d32d]"
                       aria-label={t.footer.privacy}
                     >

@@ -1,0 +1,10 @@
+export { CategoryHint } from "@/components/games/yacht-dice/shared/CategoryHint";
+export { DiceTray } from "@/components/games/yacht-dice/shared/DiceTray";
+export { RollButton } from "@/components/games/yacht-dice/shared/RollButton";
+export { ScoreTable } from "@/components/games/yacht-dice/shared/ScoreTable";
+export { TopScores } from "@/components/games/yacht-dice/shared/TopScores";
+export { useI18nYacht } from "@/components/games/yacht-dice/shared/useI18nYacht";
+export { YachtShell } from "@/components/games/yacht-dice/shared/YachtShell";
+export { RoomHeaderCompact } from "@/components/games/yacht-dice/online/RoomHeaderCompact";
+export { MatchStatus } from "@/components/games/yacht-dice/online/MatchStatus";
+export { DifficultySelect } from "@/components/games/yacht-dice/ai/DifficultySelect";

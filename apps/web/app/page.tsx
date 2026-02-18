@@ -4,27 +4,13 @@ import { RetroGameCard } from "@/components/home/retro-game-card";
 import { PressStartButton } from "@/components/press-start-button";
 import { getMessages } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
+import { gameRegistry } from "@/lib/registry";
 
 export const metadata: Metadata = {
   title: "Home",
   description: "Duelboard landing page with featured games and quick access.",
   alternates: { canonical: "/" },
 };
-
-const featuredGames = [
-  {
-    title: "Yacht Dice",
-    href: "/games/yacht-dice",
-    tone: "yellow" as const,
-    imageSrc: "/yacht-dice.gif",
-  },
-  {
-    title: "Sea Battle",
-    tone: "red" as const,
-    imageSrc: "/sea-battle.gif",
-    comingSoon: true as const,
-  },
-];
 
 export default async function HomePage() {
   const locale = await getRequestLocale();
@@ -54,15 +40,15 @@ export default async function HomePage() {
           <h2 className="text-center text-5xl uppercase tracking-[0.12em] text-[#f5f5f5]">{t.home.gamesTitle}</h2>
 
           <div className="mt-16 grid grid-cols-1 justify-items-center gap-y-16 md:grid-cols-2 md:gap-x-16">
-            {featuredGames.map((game) => (
+            {gameRegistry.map((game) => (
               <RetroGameCard
-                key={game.title}
-                title={game.title}
-                summary={game.title === "Yacht Dice" ? t.home.yachtSummary : t.home.seaBattleSummary}
+                key={game.slug}
+                title={game.title[locale]}
+                summary={game.description?.[locale] ?? ""}
                 href={game.href}
                 imageSrc={game.imageSrc}
                 tone={game.tone}
-                comingSoon={game.comingSoon}
+                comingSoon={game.status !== "live"}
                 playLabel={t.home.play}
                 comingSoonLabel={t.home.comingSoon}
                 openGameImageAria={t.home.openGameImageAria}

@@ -1,18 +1,24 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getAllPosts, getPostBySlug } from "@/lib/blog";
+import { LocaleFallbackBadge } from "@/components/content/locale-fallback-badge";
+import { MdxArticle } from "@/components/content/mdx-article";
+import { RelatedLinks } from "@/components/content/related-links";
+import { getAllPostSlugs, getPostBySlug } from "@/lib/blog";
+import { getRelatedGames, getRelatedPosts } from "@/lib/content";
+import { getRequestLocale } from "@/lib/i18n-server";
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
 
 export async function generateStaticParams() {
-  return getAllPosts().map((post) => ({ slug: post.slug }));
+  return getAllPostSlugs().map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const locale = await getRequestLocale();
+  const post = getPostBySlug(slug, locale);
 
   if (!post) {
     return {
@@ -35,20 +41,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const locale = await getRequestLocale();
+  const post = getPostBySlug(slug, locale);
 
   if (!post) {
     notFound();
   }
 
+  const relatedPosts = getRelatedPosts(post.relatedPosts, locale);
+  const relatedGames = getRelatedGames(post.relatedGames, locale);
+
   return (
-    <article className="rounded-xl border border-slate-700 bg-slate-900/70 p-6">
-      <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-slate-400">{post.date}</p>
-      <h1 className="mb-4 text-sm uppercase tracking-[0.2em] text-cyan-200">{post.title}</h1>
-      <div
-        className="space-y-4 text-[11px] leading-6 text-slate-200"
-        dangerouslySetInnerHTML={{ __html: post.html }}
-      />
-    </article>
+    <div className="space-y-4">
+      <article className="rounded-xl border border-slate-700 bg-slate-900/70 p-6">
+        <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-slate-400">{post.date}</p>
+        <h1 className="mb-2 text-sm uppercase tracking-[0.2em] text-cyan-200">{post.title}</h1>
+        <LocaleFallbackBadge requestedLocale={locale} resolvedLocale={post.resolvedLocale} />
+        <p className="mb-5 text-[11px] text-slate-300">{post.description}</p>
+        <MdxArticle source={post.content} />
+      </article>
+      <RelatedLinks locale={locale} posts={relatedPosts} games={relatedGames} />
+    </div>
   );
 }

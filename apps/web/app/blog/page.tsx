@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LocaleFallbackBadge } from "@/components/content/locale-fallback-badge";
 import { getAllPosts } from "@/lib/blog";
+import { getRequestLocale } from "@/lib/i18n-server";
 
 export const metadata: Metadata = {
   title: "Blog",
   description: "Duelboard blog posts.",
   alternates: { canonical: "/blog" },
+  openGraph: {
+    title: "Blog",
+    description: "Duelboard blog posts.",
+    url: "/blog",
+  },
 };
 
-export default function BlogListPage() {
-  const posts = getAllPosts();
+export default async function BlogListPage() {
+  const locale = await getRequestLocale();
+  const posts = getAllPosts(locale);
 
   return (
     <section className="space-y-5 rounded-xl border border-slate-700 bg-slate-900/70 p-6">
@@ -27,7 +35,13 @@ export default function BlogListPage() {
               >
                 {post.title}
               </Link>
+              <div className="mt-2">
+                <LocaleFallbackBadge requestedLocale={locale} resolvedLocale={post.resolvedLocale} />
+              </div>
               <p className="mt-2 text-[11px] leading-6 text-slate-300">{post.description}</p>
+              <p className="mt-2 text-[10px] uppercase tracking-[0.08em] text-slate-500">
+                {locale === "ko" ? "태그" : "Tags"}: {post.tags.join(", ") || "-"}
+              </p>
             </li>
           ))}
         </ul>
