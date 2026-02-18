@@ -6,9 +6,11 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { Locale, Messages } from "@/lib/i18n";
 import { PixelButton } from "@/components/game-core/ui/PixelButton";
 import { PixelPanel } from "@/components/game-core/ui/PixelPanel";
-import { shortRoomId } from "@/components/game-core/utils/format";
-import { DiceTray, MatchStatus, RoomHeaderCompact, RollButton, ScoreTable, TopScores, YachtShell } from "@/components/games/yacht-dice";
+import { DiceTray, RollButton, ScoreTable, TopScores, YachtShell } from "@/components/games/yacht-dice";
+import { YachtCelebration } from "@/components/games/yacht-dice/shared/YachtCelebration";
+import { VictoryCelebration } from "@/components/games/yacht-dice/shared/VictoryCelebration";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { isYacht } from "@/lib/yachtDiceFx";
 import {
   calculateTotal,
   createEmptyScoreCard,
@@ -212,6 +214,8 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roomId = searchParams.get("room");
+  const autoJoinRequested = searchParams.get("autojoin") === "1";
+  const autoPlayRequested = searchParams.get("autoplay") === "1";
 
   const [playerKey, setPlayerKey] = useState<string | null>(null);
   const [nickname, setNickname] = useState("");
@@ -220,10 +224,15 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
+  const [lobbyReadyVotes, setLobbyReadyVotes] = useState<Record<string, boolean>>({});
   const [rematchVotes, setRematchVotes] = useState<Record<string, boolean>>({});
   const [rematchBusy, setRematchBusy] = useState(false);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
+  const [winnerCelebrationOpen, setWinnerCelebrationOpen] = useState(false);
   const rematchStartingRef = useRef(false);
-  const rematchChannelRef = useRef<RealtimeChannel | null>(null);
+  const celebratedVersionRef = useRef<number | null>(null);
+  const winnerCelebratedVersionRef = useRef<number | null>(null);
+  const roomUiChannelRef = useRef<RealtimeChannel | null>(null);
   const t = text;
 
   useEffect(() => {
@@ -284,10 +293,16 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
 
   const isPlaying = room?.status === "playing" && !!onlineGameState;
   const isFinished = Boolean(onlineGameState?.phase === "finished");
+  const myLobbyReady = Boolean(playerKey && lobbyReadyVotes[playerKey]);
+  const opponentLobbyReady = Boolean(opponent && lobbyReadyVotes[opponent.player_key]);
+  const bothLobbyReady = Boolean(opponent && myLobbyReady && opponentLobbyReady);
   const isMyTurn = Boolean(isPlaying && myFinalSeat && onlineGameState?.turnSeat === myFinalSeat);
   const myRematchReady = Boolean(playerKey && rematchVotes[playerKey]);
   const opponentRematchReady = Boolean(opponent && rematchVotes[opponent.player_key]);
   const bothRematchReady = Boolean(opponent && myRematchReady && opponentRematchReady);
+  const canShowBoard = Boolean(joined && onlineGameState && (isFinished || (isPlaying && bothLobbyReady)));
+  const myScoreTitle = `${(me?.nickname ?? t.youLabel).toUpperCase()} SCORE`;
+  const opponentScoreTitle = `${(opponent?.nickname ?? t.rivalLabel).toUpperCase()} SCORE`;
   const winnerHeadline =
     myTotal === opponentTotal ? t.draw : myTotal > opponentTotal ? `${t.youWin}!` : `${t.rivalWins}!`;
 
@@ -419,7 +434,6 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
         p_player_key: playerKey,
         p_nickname: trimmedNickname,
       };
-      console.log("[join_room:manual] payload", payload);
       const { data, error: rpcError } = await supabase.rpc("join_room", payload);
 
       if (rpcError) {
@@ -433,6 +447,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
 
       setMySeat(row.seat);
       setJoined(true);
+      setLobbyReadyVotes((current) => ({ ...current, [playerKey]: true }));
       setMessage(t.joinRoomDone);
     } catch (joinError) {
       const rawMessage = joinError instanceof Error ? joinError.message : "join_room_failed";
@@ -443,7 +458,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
   }, [nickname, playerKey, roomId, t]);
 
   useEffect(() => {
-    if (!roomId || !playerKey || joined) {
+    if (!autoJoinRequested || !roomId || !playerKey || joined) {
       return;
     }
     if (!isUuid(roomId)) {
@@ -466,7 +481,6 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
           p_player_key: playerKey,
           p_nickname: savedNickname,
         };
-        console.log("[join_room:auto] payload", payload);
         const { data, error: rpcError } = await supabase.rpc("join_room", payload);
 
         if (cancelled || rpcError) {
@@ -480,6 +494,10 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
 
         setMySeat(row.seat);
         setJoined(true);
+        if (autoPlayRequested) {
+          setLobbyReadyVotes((current) => ({ ...current, [playerKey]: true }));
+        }
+        router.replace(`/games/yacht-dice/online?room=${roomId}${autoPlayRequested ? "&autoplay=1" : ""}`);
       } catch {
         // Manual join remains available.
       }
@@ -488,7 +506,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
     return () => {
       cancelled = true;
     };
-  }, [joined, nickname, playerKey, roomId, t.invalidRoomId]);
+  }, [autoJoinRequested, autoPlayRequested, joined, nickname, playerKey, roomId, router, t.invalidRoomId]);
 
   const handleRoll = useCallback(async () => {
     if (!onlineGameState) {
@@ -517,8 +535,25 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
     [submitMove],
   );
 
+  const handleLobbyReady = useCallback(async () => {
+    if (!roomId || !playerKey || myLobbyReady) {
+      return;
+    }
+
+    setLobbyReadyVotes((current) => ({ ...current, [playerKey]: true }));
+
+    if (!roomUiChannelRef.current) {
+      return;
+    }
+
+    await roomUiChannelRef.current.send({
+      type: "broadcast",
+      event: "pregame_ready",
+      payload: { room_id: roomId, player_key: playerKey, ready: true },
+    });
+  }, [myLobbyReady, playerKey, roomId]);
+
   const inviteLink = roomId ? `${origin}/games/yacht-dice/online?room=${roomId}` : "";
-  const compactRoomId = shortRoomId(roomId);
 
   useEffect(() => {
     if (!joined || !roomId) {
@@ -531,10 +566,73 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
   }, [joined, refetchLatest, roomId]);
 
   useEffect(() => {
+    setLobbyReadyVotes({});
     setRematchVotes({});
     setRematchBusy(false);
+    setCelebrationOpen(false);
+    setWinnerCelebrationOpen(false);
+    celebratedVersionRef.current = null;
+    winnerCelebratedVersionRef.current = null;
     rematchStartingRef.current = false;
   }, [roomId, isFinished]);
+
+  useEffect(() => {
+    if (!celebrationOpen) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      setCelebrationOpen(false);
+    }, 900);
+    return () => window.clearTimeout(timeout);
+  }, [celebrationOpen]);
+
+  useEffect(() => {
+    if (!winnerCelebrationOpen) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      setWinnerCelebrationOpen(false);
+    }, 1400);
+    return () => window.clearTimeout(timeout);
+  }, [winnerCelebrationOpen]);
+
+  useEffect(() => {
+    if (!onlineGameState || !gameState) {
+      return;
+    }
+    if (onlineGameState.phase !== "scoring" || onlineGameState.rollsUsed <= 0) {
+      return;
+    }
+    if (!isYacht(onlineGameState.dice)) {
+      return;
+    }
+
+    const version = Number(gameState.version);
+    if (!Number.isFinite(version) || version < 0) {
+      return;
+    }
+    if (celebratedVersionRef.current === version) {
+      return;
+    }
+
+    celebratedVersionRef.current = version;
+    setCelebrationOpen(true);
+  }, [gameState, onlineGameState]);
+
+  useEffect(() => {
+    if (!isFinished || !gameState || myTotal <= opponentTotal) {
+      return;
+    }
+    const version = Number(gameState.version);
+    if (!Number.isFinite(version) || version < 0) {
+      return;
+    }
+    if (winnerCelebratedVersionRef.current === version) {
+      return;
+    }
+    winnerCelebratedVersionRef.current = version;
+    setWinnerCelebrationOpen(true);
+  }, [gameState, isFinished, myTotal, opponentTotal]);
 
   useEffect(() => {
     if (!roomId || !playerKey || !joined) {
@@ -542,10 +640,19 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
     }
 
     const supabase = getSupabaseClient(playerKey);
-    const channel = supabase.channel(`private:room:${roomId}:rematch`, {
+    const channel = supabase.channel(`private:room:${roomId}:duel-ui`, {
       config: { broadcast: { self: false } },
     });
-    rematchChannelRef.current = channel;
+    roomUiChannelRef.current = channel;
+
+    channel.on("broadcast", { event: "pregame_ready" }, ({ payload }) => {
+      const fromRoomId = typeof payload?.room_id === "string" ? payload.room_id : null;
+      const fromPlayerKey = typeof payload?.player_key === "string" ? payload.player_key : null;
+      if (!fromRoomId || !fromPlayerKey || fromRoomId !== roomId) {
+        return;
+      }
+      setLobbyReadyVotes((current) => ({ ...current, [fromPlayerKey]: Boolean(payload?.ready) }));
+    });
 
     channel.on("broadcast", { event: "rematch_vote" }, ({ payload }) => {
       const fromRoomId = typeof payload?.room_id === "string" ? payload.room_id : null;
@@ -565,34 +672,96 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
       setMessage(t.rematchStarting);
       setJoined(false);
       setMySeat(null);
+      setLobbyReadyVotes({});
       setRematchVotes({});
       setRematchBusy(false);
       rematchStartingRef.current = false;
-      router.replace(`/games/yacht-dice/online?room=${nextRoomId}`);
+      router.replace(`/games/yacht-dice/online?room=${nextRoomId}&autojoin=1&autoplay=1`);
     });
 
-    channel.subscribe();
+    channel.subscribe(async (status) => {
+      if (status !== "SUBSCRIBED") {
+        return;
+      }
+
+      if (myLobbyReady) {
+        await channel.send({
+          type: "broadcast",
+          event: "pregame_ready",
+          payload: { room_id: roomId, player_key: playerKey, ready: true },
+        });
+      }
+    });
 
     return () => {
-      rematchChannelRef.current = null;
+      roomUiChannelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [joined, playerKey, roomId, router, t.rematchStarting]);
+  }, [joined, myLobbyReady, playerKey, roomId, router, t.rematchStarting]);
+
+  useEffect(() => {
+    if (!joined || !roomId || !playerKey || !myLobbyReady || bothLobbyReady || isFinished) {
+      return;
+    }
+    if (!roomUiChannelRef.current) {
+      return;
+    }
+
+    const sendReady = async () => {
+      if (!roomUiChannelRef.current) {
+        return;
+      }
+      await roomUiChannelRef.current.send({
+        type: "broadcast",
+        event: "pregame_ready",
+        payload: { room_id: roomId, player_key: playerKey, ready: true },
+      });
+    };
+
+    void sendReady();
+    const interval = window.setInterval(() => {
+      void sendReady();
+    }, 1400);
+    return () => window.clearInterval(interval);
+  }, [bothLobbyReady, isFinished, joined, myLobbyReady, playerKey, roomId]);
 
   const handleRematch = useCallback(async () => {
     if (!isFinished || !roomId || !playerKey || myRematchReady) {
       return;
     }
     setRematchVotes((current) => ({ ...current, [playerKey]: true }));
-    if (!rematchChannelRef.current) {
+    if (!roomUiChannelRef.current) {
       return;
     }
-    await rematchChannelRef.current.send({
+    await roomUiChannelRef.current.send({
       type: "broadcast",
       event: "rematch_vote",
       payload: { room_id: roomId, player_key: playerKey, ready: true },
     });
   }, [isFinished, myRematchReady, playerKey, roomId]);
+
+  useEffect(() => {
+    if (!isFinished || !myRematchReady || bothRematchReady || !roomId || !playerKey) {
+      return;
+    }
+
+    const sendVote = async () => {
+      if (!roomUiChannelRef.current) {
+        return;
+      }
+      await roomUiChannelRef.current.send({
+        type: "broadcast",
+        event: "rematch_vote",
+        payload: { room_id: roomId, player_key: playerKey, ready: true },
+      });
+    };
+
+    void sendVote();
+    const interval = window.setInterval(() => {
+      void sendVote();
+    }, 1400);
+    return () => window.clearInterval(interval);
+  }, [bothRematchReady, isFinished, myRematchReady, playerKey, roomId]);
 
   useEffect(() => {
     if (!isFinished || !bothRematchReady || rematchStartingRef.current || !playerKey || !roomId) {
@@ -626,8 +795,8 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
           throw new Error("failed_to_create_room");
         }
 
-        if (rematchChannelRef.current) {
-          await rematchChannelRef.current.send({
+        if (roomUiChannelRef.current) {
+          await roomUiChannelRef.current.send({
             type: "broadcast",
             event: "rematch_room_created",
             payload: { room_id: roomId, next_room_id: row.room_id },
@@ -637,10 +806,11 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
         setMessage(t.rematchStarting);
         setJoined(false);
         setMySeat(null);
+        setLobbyReadyVotes({});
         setRematchVotes({});
         setRematchBusy(false);
         rematchStartingRef.current = false;
-        router.replace(`/games/yacht-dice/online?room=${row.room_id}`);
+        router.replace(`/games/yacht-dice/online?room=${row.room_id}&autojoin=1&autoplay=1`);
       } catch (rematchError) {
         const rawMessage = rematchError instanceof Error ? rematchError.message : "rematch_failed";
         setMessage(normalizeRpcError(rawMessage, t));
@@ -649,6 +819,25 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
       }
     })();
   }, [bothRematchReady, isFinished, me?.nickname, myFinalSeat, nickname, playerKey, roomId, router, t]);
+
+  useEffect(() => {
+    if (!autoPlayRequested || !joined || myLobbyReady) {
+      return;
+    }
+    void handleLobbyReady();
+  }, [autoPlayRequested, handleLobbyReady, joined, myLobbyReady]);
+
+  useEffect(() => {
+    if (!roomId || (!autoJoinRequested && !autoPlayRequested)) {
+      return;
+    }
+    if (!joined) {
+      return;
+    }
+    if (!autoPlayRequested || bothLobbyReady || isFinished) {
+      router.replace(`/games/yacht-dice/online?room=${roomId}`);
+    }
+  }, [autoJoinRequested, autoPlayRequested, bothLobbyReady, isFinished, joined, roomId, router]);
 
   const rematchStatusText = bothRematchReady
     ? myFinalSeat === 1
@@ -660,22 +849,18 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
 
   return (
     <div className="space-y-5 bg-black">
-      {(!joined || (!isPlaying && !isFinished)) && (
-        <PixelPanel tone="cyan" className="space-y-4">
+      {!autoPlayRequested && (!joined || !canShowBoard) && (
+        <PixelPanel
+          tone="cyan"
+          className="space-y-4 border border-cyan-300/40 bg-[url('/game-bg.png')] bg-cover bg-center p-4 sm:p-5"
+        >
           <h1 className="text-xs uppercase tracking-[0.16em] text-cyan-100">{t.title}</h1>
           <p className="text-[11px] text-slate-300">{t.subtitle}</p>
 
-          <RoomHeaderCompact
-            roomText={`${t.roomLabel}: ${roomId ?? t.roomBeforeCreate}`}
-            seatTurnText={`${t.seatLabel}: ${myFinalSeat ? `#${myFinalSeat}` : t.notJoined} / ${t.turnLabel}: ${
-              onlineGameState ? `#${onlineGameState.turnSeat}` : "-"
-            }`}
-            meText={`${t.meLabel}: ${onlineState.mineOnline ? t.meOnline : t.meOffline}${me ? ` (${me.nickname})` : ""}`}
-            opponentText={`${t.opponent}: ${
-              opponent ? (onlineState.opponentOnline ? t.meOnline : t.meOffline) : t.waiting
-            }${opponent ? ` (${opponent.nickname})` : ""}`}
-          />
-          <div className="h-px bg-slate-700/70" />
+          <p className="text-[10px] uppercase tracking-[0.12em] text-slate-300">
+            {t.opponent}: {opponent ? (onlineState.opponentOnline ? t.meOnline : t.meOffline) : t.waiting}
+            {opponent ? ` (${opponent.nickname})` : ""}
+          </p>
 
           <div className="flex flex-col gap-2">
             <label htmlFor="nickname" className="text-[10px] uppercase tracking-[0.12em] text-slate-300">
@@ -699,7 +884,20 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
 
             {roomId && !joined && (
               <PixelButton tone="emerald" onClick={handleJoinRoom} disabled={busy || !playerKey}>
-                {t.joinRoom}
+                {t.readyToPlay}
+              </PixelButton>
+            )}
+
+            {roomId && joined && !isFinished && (
+              <PixelButton
+                tone={myLobbyReady ? "slate" : "amber"}
+                onClick={() => {
+                  void handleLobbyReady();
+                }}
+                disabled={myLobbyReady || busy}
+                aria-pressed={myLobbyReady}
+              >
+                {myLobbyReady ? t.readyOn : t.readyToPlay}
               </PixelButton>
             )}
 
@@ -740,18 +938,14 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
         </PixelPanel>
       )}
 
-      {joined && room?.status === "waiting" && (
-        <MatchStatus title={t.waitingRoom} description={t.waitingRoomDesc} />
-      )}
-
-      {joined && (isPlaying || isFinished) && onlineGameState && (
+      {canShowBoard && onlineGameState && (
         <div className="relative">
           <YachtShell
             top={
               <TopScores
-                leftTitle={t.playerScore}
+                leftTitle={myScoreTitle}
                 leftScore={myTotal}
-                rightTitle={t.rivalScore}
+                rightTitle={opponentScoreTitle}
                 rightScore={opponentTotal}
                 centerSlot={
                   <RollButton
@@ -770,43 +964,6 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
                       ? t.youLabel
                       : t.rivalLabel
                 }
-                detailsPanel={{
-                  summary: t.roomInviteDetails,
-                  content: (
-                    <div className="space-y-2 text-[11px] text-slate-200">
-                      <p className="text-[11px] uppercase tracking-[0.06em] text-slate-200">
-                        {t.roomLabel} {compactRoomId} • {t.seatLabel} {myFinalSeat ? `#${myFinalSeat}` : "-"} • {t.turnLabel} #
-                        {onlineGameState.turnSeat} •{" "}
-                        {opponent ? (onlineState.opponentOnline ? t.rivalOnline : t.rivalOffline) : `${t.rivalLabel} ${t.waiting}`}
-                      </p>
-                      <p className="font-mono text-[10px] text-cyan-200">
-                        {t.roomId}: {roomId}
-                      </p>
-                      <p className="break-all font-mono text-[10px] text-cyan-100">{inviteLink}</p>
-                      <div className="flex items-center gap-2">
-                        <PixelButton
-                          tone="slate"
-                          onClick={async () => {
-                            if (!inviteLink) {
-                              return;
-                            }
-                            try {
-                              await navigator.clipboard.writeText(inviteLink);
-                              setMessage(t.copyDone);
-                            } catch {
-                              setMessage(t.copyFailed);
-                            }
-                          }}
-                        >
-                          {t.copyLink}
-                        </PixelButton>
-                        <span className="text-[10px] uppercase tracking-[0.08em] text-slate-400">
-                          {t.opponent}: {opponent?.nickname ?? t.waiting}
-                        </span>
-                      </div>
-                    </div>
-                  ),
-                }}
               />
             }
             middle={
@@ -881,6 +1038,8 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
           ) : null}
         </div>
       )}
+      <VictoryCelebration open={winnerCelebrationOpen} label={t.youWin} durationMs={1400} />
+      <YachtCelebration open={celebrationOpen} durationMs={900} />
     </div>
   );
 }

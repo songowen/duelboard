@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PixelButton } from "@/components/game-core/ui/PixelButton";
+import { YachtCelebration } from "@/components/games/yacht-dice/shared/YachtCelebration";
 import type { Locale, Messages } from "@/lib/i18n";
+import { isYacht } from "@/lib/yachtDiceFx";
 import { AIDifficulty, chooseAiAction } from "@/lib/yacht-dice-ai";
 import {
   calculateCategoryScore,
@@ -71,8 +73,8 @@ export function VsAiContainer({ locale, text }: VsAiContainerProps) {
   const [difficulty, setDifficulty] = useState<AIDifficulty>("normal");
   const [matchPhase, setMatchPhase] = useState<MatchPhase>("preGame");
   const [game, setGame] = useState<GameState>(createInitialGameState);
-  const [showYachtFx, setShowYachtFx] = useState(false);
-  const [yachtFxKey, setYachtFxKey] = useState(0);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
+  const celebratedTurnRef = useRef<string | null>(null);
 
   const matchPlaying = matchPhase === "playing";
   const humanTurn = matchPlaying && game.currentPlayer === "human" && game.status === "playing";
@@ -88,21 +90,18 @@ export function VsAiContainer({ locale, text }: VsAiContainerProps) {
     return getAvailableCategories(game.humanCard);
   }, [game.humanCard, game.rollsUsed, humanTurn]);
 
-  const triggerYachtFx = () => {
-    setYachtFxKey((current) => current + 1);
-    setShowYachtFx(true);
-  };
+  const turnMarker = useMemo(() => {
+    const humanScoredCount = Object.values(game.humanCard).filter((value) => typeof value === "number").length;
+    const aiScoredCount = Object.values(game.aiCard).filter((value) => typeof value === "number").length;
+    return `${game.currentPlayer}:${humanScoredCount}:${aiScoredCount}`;
+  }, [game.aiCard, game.currentPlayer, game.humanCard]);
 
   const endTurnWithCategory = (player: PlayerKey, category: YachtCategory) => {
-    let yachtScored = false;
     setGame((current) => {
       if (current.status !== "playing") {
         return current;
       }
       const score = calculateCategoryScore(current.turnDice, category);
-      if (category === "Yacht" && score === 50) {
-        yachtScored = true;
-      }
       const nextHuman = { ...current.humanCard };
       const nextAi = { ...current.aiCard };
       if (player === "human") {
@@ -131,9 +130,6 @@ export function VsAiContainer({ locale, text }: VsAiContainerProps) {
         rollsUsed: 0,
       };
     });
-    if (yachtScored) {
-      triggerYachtFx();
-    }
   };
 
   const onRoll = (holdsOverride?: HoldMask) => {
@@ -164,11 +160,15 @@ export function VsAiContainer({ locale, text }: VsAiContainerProps) {
   };
 
   const startMatch = () => {
+    celebratedTurnRef.current = null;
+    setCelebrationOpen(false);
     setGame(createInitialGameState());
     setMatchPhase("playing");
   };
 
   const playAgain = () => {
+    celebratedTurnRef.current = null;
+    setCelebrationOpen(false);
     setGame(createInitialGameState());
     setMatchPhase("playing");
   };
@@ -207,14 +207,29 @@ export function VsAiContainer({ locale, text }: VsAiContainerProps) {
   }, [game.status, matchPhase]);
 
   useEffect(() => {
-    if (!showYachtFx) {
+    if (!celebrationOpen) {
       return;
     }
     const timeout = window.setTimeout(() => {
-      setShowYachtFx(false);
-    }, 1100);
+      setCelebrationOpen(false);
+    }, 900);
     return () => window.clearTimeout(timeout);
-  }, [showYachtFx, yachtFxKey]);
+  }, [celebrationOpen]);
+
+  useEffect(() => {
+    if (matchPhase !== "playing" || game.status !== "playing" || game.rollsUsed <= 0) {
+      return;
+    }
+    if (!isYacht(game.turnDice)) {
+      return;
+    }
+    if (celebratedTurnRef.current === turnMarker) {
+      return;
+    }
+
+    celebratedTurnRef.current = turnMarker;
+    setCelebrationOpen(true);
+  }, [game.rollsUsed, game.status, game.turnDice, matchPhase, turnMarker]);
 
   const winnerHeadline =
     game.winner === "human" ? `${text.youWin}!` : game.winner === "ai" ? `${text.aiWins}!` : `${text.draw}!`;
@@ -232,7 +247,7 @@ export function VsAiContainer({ locale, text }: VsAiContainerProps) {
           />
         }
         middle={
-          <div className="mx-auto w-full max-w-2xl rounded-xl border border-slate-700 bg-slate-900/75 p-6 text-center">
+          <div className="mx-auto w-full max-w-2xl rounded-xl border border-slate-700 bg-[url('/game-bg.png')] bg-cover bg-center p-6 text-center">
             <h2 className="text-sm uppercase tracking-[0.16em] text-yellow-300">{text.difficultySelectTitle}</h2>
             <p className="mt-3 text-[12px] text-slate-300">{text.difficultySelectDescription}</p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -312,14 +327,14 @@ export function VsAiContainer({ locale, text }: VsAiContainerProps) {
             youLabel={text.you}
             opponentLabel={text.ai}
             youCard={game.humanCard}
-          opponentCard={game.aiCard}
-          previewDice={game.turnDice}
-          previewEnabled={humanTurn && game.rollsUsed > 0}
-          hideOpponentValuesWhilePreview
-          selectable={selectableCategories}
-          onSelect={(category) => endTurnWithCategory("human", category)}
-          selectDisabled={!humanTurn}
-        />
+            opponentCard={game.aiCard}
+            previewDice={game.turnDice}
+            previewEnabled={humanTurn && game.rollsUsed > 0}
+            hideOpponentValuesWhilePreview
+            selectable={selectableCategories}
+            onSelect={(category) => endTurnWithCategory("human", category)}
+            selectDisabled={!humanTurn}
+          />
         }
       />
 
@@ -355,18 +370,7 @@ export function VsAiContainer({ locale, text }: VsAiContainerProps) {
         </div>
       ) : null}
 
-      {showYachtFx ? (
-        <div key={yachtFxKey} className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center" aria-hidden="true">
-          <div className="absolute inset-0 bg-yellow-300/10 motion-safe:animate-pulse motion-reduce:animate-none" />
-          <div className="relative rounded-xl border border-yellow-300/80 bg-black/85 px-8 py-5 text-center shadow-[0_0_45px_rgba(250,204,21,0.35)]">
-            <p className="text-[42px] uppercase leading-none tracking-[0.08em] text-yellow-300 sm:text-[68px]">YACHT!</p>
-          </div>
-          <span className="absolute left-[14%] top-[20%] h-2 w-2 rounded-full bg-yellow-300 motion-safe:animate-ping motion-reduce:animate-none" />
-          <span className="absolute left-[84%] top-[25%] h-2 w-2 rounded-full bg-cyan-300 motion-safe:animate-ping motion-reduce:animate-none" />
-          <span className="absolute left-[26%] top-[78%] h-2 w-2 rounded-full bg-amber-300 motion-safe:animate-ping motion-reduce:animate-none" />
-          <span className="absolute left-[74%] top-[74%] h-2 w-2 rounded-full bg-yellow-200 motion-safe:animate-ping motion-reduce:animate-none" />
-        </div>
-      ) : null}
+      <YachtCelebration open={celebrationOpen} durationMs={900} />
     </div>
   );
 }

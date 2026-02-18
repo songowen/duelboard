@@ -46,8 +46,8 @@ export default async function YachtDiceModePage() {
 
   return (
     <div className="space-y-6">
-      <section className="grid min-h-[clamp(420px,72vh,760px)] place-items-center">
-        <div className="w-full max-w-3xl border border-cyan-300/45 bg-black/80 p-5 sm:p-8">
+      <section className="grid min-h-[clamp(420px,72vh,760px)] place-items-center rounded-2xl bg-[url('/game-bg.png')] bg-cover bg-center p-3 sm:p-4">
+        <div className="w-full max-w-3xl border border-cyan-300/45 bg-black/84 p-5 sm:p-8">
           <div className="text-center">
             <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300">{t.modeSelect}</p>
             <h1 className="mt-3 text-4xl uppercase tracking-[0.12em] text-[#f5f5f5] sm:text-5xl">{game.title[locale]}</h1>
