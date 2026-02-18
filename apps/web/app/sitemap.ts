@@ -6,6 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [
     "",
     "/games",
+    "/games/yacht-dice",
     "/games/yacht-dice/vs-ai",
     "/games/yacht-dice/online",
     "/blog",

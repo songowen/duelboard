@@ -14,10 +14,10 @@ export default function GamesPage() {
       <div className="space-y-3 text-[11px] leading-6 text-slate-300">
         <p>Featured titles: Yacht Dice, Tic-Tac-Toe, Nim.</p>
         <Link
-          href="/games/yacht-dice/vs-ai"
+          href="/games/yacht-dice"
           className="inline-block rounded border border-cyan-300 bg-cyan-300/20 px-3 py-2 uppercase tracking-[0.14em] text-cyan-100"
         >
-          Play Yacht Dice VS AI
+          Enter Yacht Dice
         </Link>
         <div>
           <Link

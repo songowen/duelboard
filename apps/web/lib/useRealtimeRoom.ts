@@ -92,11 +92,7 @@ export function useRealtimeRoom(
     try {
       const [roomRes, playersRes, gameRes] = await Promise.all([
         supabase.from("rooms").select("id,game_type,status,created_at,expires_at").eq("id", roomId).single(),
-        supabase
-          .from("room_players")
-          .select("room_id,player_key,nickname,seat,joined_at")
-          .eq("room_id", roomId)
-          .order("seat", { ascending: true }),
+        supabase.rpc("get_room_players", { p_room_id: roomId }),
         supabase
           .from("game_states")
           .select("room_id,state,turn_seat,version,updated_at")

@@ -1,0 +1,233 @@
+export const localeCookieName = "duelboard_locale";
+
+export const supportedLocales = ["en", "ko"] as const;
+export type Locale = (typeof supportedLocales)[number];
+
+function isLocale(value: string): value is Locale {
+  return supportedLocales.includes(value as Locale);
+}
+
+export const messages = {
+  en: {
+    nav: {
+      games: "Games",
+      blog: "Blog",
+      more: "More",
+    },
+    footer: {
+      privacy: "Privacy",
+      terms: "Terms",
+      contact: "Contact",
+    },
+    home: {
+      gamesTitle: "GAMES",
+      pressStart: "Press Start",
+      pressStartAria: "Scroll to games section",
+      yachtSummary: "Roll, hold, and outscore the rival in quick retro rounds.",
+      seaBattleSummary: "Sea Battle is under development and will be available soon.",
+      play: "Play",
+      comingSoon: "Coming Soon",
+      openGameImageAria: "Open game",
+      comingSoonImageAria: "Coming soon",
+    },
+    yachtMode: {
+      title: "YACHT DICE",
+      modeSelect: "Mode Select",
+      solo: "Solo",
+      multiplayer: "Multiplayer",
+      vsAi: "VS AI",
+      online: "ONLINE 1V1",
+      soloDescription: "Play locally against Easy or Normal AI.",
+      multiplayerDescription: "Create or join a private 1:1 room.",
+      noRanking: "No ranking. Quick matches only.",
+      enterVsAiAria: "Enter Yacht Dice VS AI",
+      enterOnlineAria: "Enter Yacht Dice Online 1v1",
+    },
+    yachtVsAi: {
+      playerScore: "PLAYER SCORE",
+      aiScore: "AI SCORE",
+      roll: "ROLL",
+      categoryLabel: "CATEGORY",
+      hoverHint: "Hover a category to see details.",
+      you: "YOU",
+      ai: "AI",
+      draw: "DRAW",
+      youWin: "YOU WIN",
+      aiWins: "AI WINS",
+      aiThinking: "AI THINKING",
+      yourTurn: "YOUR TURN",
+      aiTurn: "AI TURN",
+    },
+    yachtOnline: {
+      title: "YACHT DICE ONLINE (2P ROOM)",
+      subtitle: "Create a room, invite a friend, and duel in real time.",
+      loading: "Loading...",
+      roomBeforeCreate: "Before creating room",
+      notJoined: "Not Joined",
+      waiting: "Waiting",
+      meLabel: "ME",
+      meOnline: "Online",
+      meOffline: "Offline",
+      nickname: "Nickname",
+      nicknamePlaceholder: "Nickname",
+      createRoom: "Create Room",
+      joinRoom: "Join",
+      copyLink: "Copy Link",
+      inviteLink: "Invite Link",
+      roomRequesting: "Processing request...",
+      roomSyncing: "Syncing latest state...",
+      roomReady: "Ready",
+      waitingRoom: "Waiting Room",
+      waitingRoomDesc: "The game starts automatically when the second player joins.",
+      playerScore: "PLAYER SCORE",
+      rivalScore: "RIVAL SCORE",
+      roll: "ROLL",
+      categoryLabel: "CATEGORY",
+      hoverHint: "Hover a category to see details.",
+      gameOver: "GAME OVER",
+      roomLabel: "ROOM",
+      seatLabel: "SEAT",
+      turnLabel: "TURN",
+      rivalOnline: "RIVAL ONLINE",
+      rivalOffline: "RIVAL OFFLINE",
+      roomInviteDetails: "Room / Invite Details",
+      roomId: "ROOM ID",
+      opponent: "Opponent",
+      youLabel: "YOU",
+      rivalLabel: "RIVAL",
+      invalidRoomId: "room_id must be a valid UUID.",
+      requireNickname: "Please enter a nickname.",
+      createRoomCopied: "Room created. Invite link copied to clipboard.",
+      createRoomCreated: "Room created. Copy the invite link below.",
+      joinRoomDone: "Joined. Waiting for opponent or game start.",
+      copyDone: "Invite link copied to clipboard.",
+      copyFailed: "Clipboard copy failed. Please copy the link manually.",
+      roomWaitingOpponent: "Waiting for opponent.",
+      errorVersionMismatch: "State changed because the opponent moved first. Latest state has been synced.",
+      errorNotYourTurn: "It is not your turn.",
+      errorRoomNotJoinable: "The room has already started or is not joinable.",
+      errorRoomFull: "The room is full.",
+    },
+  },
+  ko: {
+    nav: {
+      games: "게임",
+      blog: "블로그",
+      more: "더보기",
+    },
+    footer: {
+      privacy: "개인정보",
+      terms: "이용약관",
+      contact: "문의",
+    },
+    home: {
+      gamesTitle: "게임",
+      pressStart: "시작",
+      pressStartAria: "게임 섹션으로 스크롤",
+      yachtSummary: "굴리고, 홀드하고, 빠른 레트로 라운드에서 상대를 이겨보세요.",
+      seaBattleSummary: "Sea Battle은 현재 개발 중이며 곧 공개될 예정입니다.",
+      play: "플레이",
+      comingSoon: "출시 예정",
+      openGameImageAria: "게임 열기",
+      comingSoonImageAria: "출시 예정",
+    },
+    yachtMode: {
+      title: "YACHT DICE",
+      modeSelect: "모드 선택",
+      solo: "싱글",
+      multiplayer: "멀티플레이",
+      vsAi: "AI 대전",
+      online: "온라인 1:1",
+      soloDescription: "로컬에서 Easy/Normal AI와 대결합니다.",
+      multiplayerDescription: "비공개 1:1 방을 만들거나 참가합니다.",
+      noRanking: "랭킹 없음. 빠른 매치 전용.",
+      enterVsAiAria: "Yacht Dice AI 대전 진입",
+      enterOnlineAria: "Yacht Dice 온라인 1:1 진입",
+    },
+    yachtVsAi: {
+      playerScore: "플레이어 점수",
+      aiScore: "AI 점수",
+      roll: "굴림",
+      categoryLabel: "카테고리",
+      hoverHint: "카테고리에 마우스를 올리면 설명이 표시됩니다.",
+      you: "나",
+      ai: "AI",
+      draw: "무승부",
+      youWin: "승리",
+      aiWins: "AI 승리",
+      aiThinking: "AI 생각 중",
+      yourTurn: "내 턴",
+      aiTurn: "AI 턴",
+    },
+    yachtOnline: {
+      title: "YACHT DICE 온라인 (2인 방)",
+      subtitle: "방을 만들고 친구를 초대해 실시간으로 대결하세요.",
+      loading: "로딩 중...",
+      roomBeforeCreate: "새 방 생성 전",
+      notJoined: "미참가",
+      waiting: "대기 중",
+      meLabel: "나",
+      meOnline: "온라인",
+      meOffline: "오프라인",
+      nickname: "닉네임",
+      nicknamePlaceholder: "닉네임",
+      createRoom: "방 만들기",
+      joinRoom: "참가",
+      copyLink: "링크 복사",
+      inviteLink: "초대 링크",
+      roomRequesting: "요청 처리 중...",
+      roomSyncing: "최신 상태 동기화 중...",
+      roomReady: "준비 완료",
+      waitingRoom: "대기실",
+      waitingRoomDesc: "두 번째 플레이어가 참가하면 자동으로 게임이 시작됩니다.",
+      playerScore: "플레이어 점수",
+      rivalScore: "상대 점수",
+      roll: "굴림",
+      categoryLabel: "카테고리",
+      hoverHint: "카테고리에 마우스를 올리면 설명이 표시됩니다.",
+      gameOver: "게임 종료",
+      roomLabel: "방",
+      seatLabel: "자리",
+      turnLabel: "턴",
+      rivalOnline: "상대 온라인",
+      rivalOffline: "상대 오프라인",
+      roomInviteDetails: "방 / 초대 상세",
+      roomId: "방 ID",
+      opponent: "상대",
+      youLabel: "나",
+      rivalLabel: "상대",
+      invalidRoomId: "room_id가 올바른 UUID 형식이 아닙니다.",
+      requireNickname: "닉네임을 입력해 주세요.",
+      createRoomCopied: "방이 생성되었습니다. 초대 링크를 클립보드에 복사했습니다.",
+      createRoomCreated: "방이 생성되었습니다. 아래 링크를 복사해 초대하세요.",
+      joinRoomDone: "참가 완료. 상대를 기다리거나 게임을 시작합니다.",
+      copyDone: "초대 링크를 클립보드에 복사했습니다.",
+      copyFailed: "클립보드 복사에 실패했습니다. 링크를 직접 복사해 주세요.",
+      roomWaitingOpponent: "상대를 기다리는 중입니다.",
+      errorVersionMismatch: "상대가 먼저 수를 둬 상태가 바뀌었습니다. 최신 상태를 다시 불러왔습니다.",
+      errorNotYourTurn: "지금은 내 턴이 아닙니다.",
+      errorRoomNotJoinable: "이미 시작된 방이거나 참가할 수 없는 상태입니다.",
+      errorRoomFull: "방이 가득 찼습니다.",
+    },
+  },
+} as const;
+
+type DeepWidenString<T> =
+  T extends string
+    ? string
+    : T extends readonly (infer U)[]
+      ? readonly DeepWidenString<U>[]
+      : T extends object
+        ? { [K in keyof T]: DeepWidenString<T[K]> }
+        : T;
+
+export type Messages = DeepWidenString<(typeof messages)["en"]>;
+
+export function getMessages(locale: Locale): Messages {
+  return messages[locale] as Messages;
+}
+
+export function parseLocale(value: string | null | undefined): Locale | null {
+  if (!value) return null;
+  return isLocale(value) ? value : null;
+}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Locale } from "@/lib/i18n";
 
 type NavItem = {
   href: string;
@@ -9,23 +10,14 @@ type NavItem = {
   match: (pathname: string) => boolean;
 };
 
-const navItems: NavItem[] = [
-  {
-    href: "/#games",
-    label: "Games",
-    match: (pathname) => pathname.startsWith("/games"),
-  },
-  {
-    href: "/blog",
-    label: "Blog",
-    match: (pathname) => pathname.startsWith("/blog"),
-  },
-  {
-    href: "/about",
-    label: "More",
-    match: (pathname) => pathname.startsWith("/about"),
-  },
-];
+type HeaderNavProps = {
+  labels: {
+    games: string;
+    blog: string;
+    more: string;
+  };
+  locale: Locale;
+};
 
 const navLinkClass = [
   "relative inline-flex items-center pb-[4px] text-[#f5f5f5] transition-colors duration-150 motion-reduce:transition-none",
@@ -36,11 +28,28 @@ const navLinkClass = [
   "data-[active=true]:text-[#f6d32d] data-[active=true]:before:opacity-100 data-[active=true]:after:opacity-100",
 ].join(" ");
 
-export function HeaderNav() {
+export function HeaderNav({ labels, locale }: HeaderNavProps) {
   const pathname = usePathname();
+  const navItems: NavItem[] = [
+    {
+      href: "/#games",
+      label: labels.games,
+      match: (currentPathname) => currentPathname.startsWith("/games"),
+    },
+    {
+      href: "/blog",
+      label: labels.blog,
+      match: (currentPathname) => currentPathname.startsWith("/blog"),
+    },
+    {
+      href: "/about",
+      label: labels.more,
+      match: (currentPathname) => currentPathname.startsWith("/about"),
+    },
+  ];
 
   return (
-    <nav aria-label="Primary">
+    <nav aria-label={locale === "ko" ? "주요 메뉴" : "Primary"}>
       <ul className="flex items-center gap-5 text-2xl uppercase tracking-[0.06em] sm:gap-8">
         {navItems.map((item) => {
           const isActive = item.match(pathname);

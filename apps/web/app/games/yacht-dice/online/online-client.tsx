@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import type { Locale, Messages } from "@/lib/i18n";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import {
-  calculateCategoryScore,
   calculateTotal,
   createEmptyScoreCard,
   getAvailableCategories,
@@ -15,6 +15,7 @@ import {
   YachtCategory,
 } from "@/lib/yacht-dice-core";
 import { useRealtimeRoom } from "@/lib/useRealtimeRoom";
+import { ArcadeHud, DiceRow, PixelButton, PixelPanel, ScoreBoard, YachtLayout } from "@/components/yacht";
 
 type DbCategory =
   | "ones"
@@ -41,6 +42,11 @@ type OnlineYachtState = {
   rollsUsed: number;
   scoreCard: { "1": DbScoreCard; "2": DbScoreCard };
   scored: { "1": DbCategory[]; "2": DbCategory[] };
+};
+
+type OnlineClientProps = {
+  locale: Locale;
+  text: Messages["yachtOnline"];
 };
 
 const STORAGE_PLAYER_KEY = "duelboard.player_key";
@@ -178,23 +184,27 @@ function toUiScoreCard(db: DbScoreCard): ScoreCard {
   return card;
 }
 
-function normalizeRpcError(message: string): string {
+function normalizeRpcError(message: string, t: Messages["yachtOnline"]): string {
   if (message.includes("version_mismatch")) {
-    return "상대가 먼저 수를 둬 상태가 바뀌었습니다. 최신 상태를 다시 불러왔습니다.";
+    return t.errorVersionMismatch;
   }
   if (message.includes("not_your_turn")) {
-    return "지금은 내 턴이 아닙니다.";
+    return t.errorNotYourTurn;
   }
   if (message.includes("room_not_joinable")) {
-    return "이미 시작된 방이거나 참가할 수 없는 상태입니다.";
+    return t.errorRoomNotJoinable;
   }
   if (message.includes("room_full")) {
-    return "방이 가득 찼습니다.";
+    return t.errorRoomFull;
   }
   return message;
 }
 
-export default function OnlineClient() {
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+export default function OnlineClient({ locale, text }: OnlineClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roomId = searchParams.get("room");
@@ -205,12 +215,15 @@ export default function OnlineClient() {
   const [joined, setJoined] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [origin, setOrigin] = useState("");
+  const t = text;
 
   useEffect(() => {
     const nextPlayerKey = getOrCreatePlayerKey();
     const savedNickname = window.localStorage.getItem(STORAGE_NICKNAME) ?? "";
     setPlayerKey(nextPlayerKey);
     setNickname(savedNickname);
+    setOrigin(window.location.origin);
   }, []);
 
   const {
@@ -301,13 +314,13 @@ export default function OnlineClient() {
         await refetchLatest();
       } catch (moveError) {
         const rawMessage = moveError instanceof Error ? moveError.message : "move_failed";
-        setMessage(normalizeRpcError(rawMessage));
+        setMessage(normalizeRpcError(rawMessage, t));
         await refetchLatest();
       } finally {
         setBusy(false);
       }
     },
-    [broadcastStateUpdated, gameState, playerKey, refetchLatest, roomId],
+    [broadcastStateUpdated, gameState, playerKey, refetchLatest, roomId, t],
   );
 
   const handleCreateRoom = useCallback(async () => {
@@ -317,7 +330,7 @@ export default function OnlineClient() {
 
     const trimmedNickname = nickname.trim();
     if (!trimmedNickname) {
-      setMessage("닉네임을 입력해 주세요.");
+      setMessage(t.requireNickname);
       return;
     }
 
@@ -356,23 +369,27 @@ export default function OnlineClient() {
       }
 
       router.replace(`/games/yacht-dice/online?room=${row.room_id}`);
-      setMessage(copied ? "방이 생성되었습니다. 초대 링크를 클립보드에 복사했습니다." : "방이 생성되었습니다. 아래 링크를 복사해 초대하세요.");
+      setMessage(copied ? t.createRoomCopied : t.createRoomCreated);
     } catch (createError) {
       const rawMessage = createError instanceof Error ? createError.message : "create_room_failed";
-      setMessage(normalizeRpcError(rawMessage));
+      setMessage(normalizeRpcError(rawMessage, t));
     } finally {
       setBusy(false);
     }
-  }, [nickname, playerKey, router]);
+  }, [nickname, playerKey, router, t]);
 
   const handleJoinRoom = useCallback(async () => {
     if (!roomId || !playerKey) {
       return;
     }
+    if (!isUuid(roomId)) {
+      setMessage(t.invalidRoomId);
+      return;
+    }
 
     const trimmedNickname = nickname.trim();
     if (!trimmedNickname) {
-      setMessage("닉네임을 입력해 주세요.");
+      setMessage(t.requireNickname);
       return;
     }
 
@@ -383,11 +400,13 @@ export default function OnlineClient() {
       window.localStorage.setItem(STORAGE_NICKNAME, trimmedNickname);
 
       const supabase = getSupabaseClient(playerKey);
-      const { data, error: rpcError } = await supabase.rpc("join_room", {
+      const payload = {
         p_room_id: roomId,
         p_player_key: playerKey,
         p_nickname: trimmedNickname,
-      });
+      };
+      console.log("[join_room:manual] payload", payload);
+      const { data, error: rpcError } = await supabase.rpc("join_room", payload);
 
       if (rpcError) {
         throw rpcError;
@@ -400,17 +419,21 @@ export default function OnlineClient() {
 
       setMySeat(row.seat);
       setJoined(true);
-      setMessage("참가 완료. 상대를 기다리거나 게임을 시작합니다.");
+      setMessage(t.joinRoomDone);
     } catch (joinError) {
       const rawMessage = joinError instanceof Error ? joinError.message : "join_room_failed";
-      setMessage(normalizeRpcError(rawMessage));
+      setMessage(normalizeRpcError(rawMessage, t));
     } finally {
       setBusy(false);
     }
-  }, [nickname, playerKey, roomId]);
+  }, [nickname, playerKey, roomId, t]);
 
   useEffect(() => {
     if (!roomId || !playerKey || joined) {
+      return;
+    }
+    if (!isUuid(roomId)) {
+      setMessage(t.invalidRoomId);
       return;
     }
 
@@ -424,11 +447,13 @@ export default function OnlineClient() {
     void (async () => {
       try {
         const supabase = getSupabaseClient(playerKey);
-        const { data, error: rpcError } = await supabase.rpc("join_room", {
+        const payload = {
           p_room_id: roomId,
           p_player_key: playerKey,
           p_nickname: savedNickname,
-        });
+        };
+        console.log("[join_room:auto] payload", payload);
+        const { data, error: rpcError } = await supabase.rpc("join_room", payload);
 
         if (cancelled || rpcError) {
           return;
@@ -449,7 +474,7 @@ export default function OnlineClient() {
     return () => {
       cancelled = true;
     };
-  }, [joined, nickname, playerKey, roomId]);
+  }, [joined, nickname, playerKey, roomId, t.invalidRoomId]);
 
   const handleRoll = useCallback(async () => {
     if (!onlineGameState) {
@@ -478,208 +503,207 @@ export default function OnlineClient() {
     [submitMove],
   );
 
-  const inviteLink = roomId
-    ? `${typeof window === "undefined" ? "" : window.location.origin}/games/yacht-dice/online?room=${roomId}`
-    : "";
+  const inviteLink = roomId ? `${origin}/games/yacht-dice/online?room=${roomId}` : "";
+  const shortRoomId = roomId ? `${roomId.slice(0, 6)}...${roomId.slice(-4)}` : "-";
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-cyan-300/35 bg-slate-900/80 p-4 sm:p-6">
-        <h1 className="mb-4 text-xs uppercase tracking-[0.2em] text-cyan-200">Yacht Dice Online (2P Room)</h1>
+    <div className="space-y-5 bg-black">
+      {(!joined || !isPlaying) && (
+        <PixelPanel tone="cyan" className="space-y-4">
+          <h1 className="text-xs uppercase tracking-[0.16em] text-cyan-100">{t.title}</h1>
+          <p className="text-[11px] text-slate-300">{t.subtitle}</p>
 
-        <div className="mb-4 grid gap-2 rounded-lg border border-slate-700/70 bg-slate-950/70 p-3 text-[10px] uppercase tracking-[0.12em] sm:grid-cols-2">
-          <p>Room: {roomId ?? "새 방 생성 전"}</p>
-          <p>
-            Seat: {myFinalSeat ? `Seat ${myFinalSeat}` : "미참가"} / Turn: {onlineGameState ? `Seat ${onlineGameState.turnSeat}` : "-"}
-          </p>
-          <p>
-            Me: {onlineState.mineOnline ? "Online" : "Offline"}
-            {me ? ` (${me.nickname})` : ""}
-          </p>
-          <p>
-            Opponent: {opponent ? (onlineState.opponentOnline ? "Online" : "Offline") : "Waiting"}
-            {opponent ? ` (${opponent.nickname})` : ""}
-          </p>
-        </div>
-
-        <div className="mb-4 flex flex-col gap-2">
-          <label htmlFor="nickname" className="text-[10px] uppercase tracking-[0.12em] text-slate-300">
-            Nickname
-          </label>
-          <input
-            id="nickname"
-            value={nickname}
-            onChange={(event) => setNickname(event.target.value)}
-            placeholder="닉네임"
-            className="rounded border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100"
-          />
-        </div>
-
-        {!roomId && (
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={handleCreateRoom}
-              disabled={busy || !playerKey}
-              className="rounded border border-cyan-300 bg-cyan-300/20 px-4 py-2 text-[10px] uppercase tracking-[0.14em] text-cyan-100 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-900 disabled:text-slate-500"
-            >
-              방 만들기
-            </button>
+          <div className="grid gap-2 text-[10px] uppercase tracking-[0.11em] text-slate-300 sm:grid-cols-2">
+            <p>
+              {t.roomLabel}: {roomId ?? t.roomBeforeCreate}
+            </p>
+            <p>
+              {t.seatLabel}: {myFinalSeat ? `#${myFinalSeat}` : t.notJoined} / {t.turnLabel}:{" "}
+              {onlineGameState ? `#${onlineGameState.turnSeat}` : "-"}
+            </p>
+            <p>
+              {t.meLabel}: {onlineState.mineOnline ? t.meOnline : t.meOffline}
+              {me ? ` (${me.nickname})` : ""}
+            </p>
+            <p>
+              {t.opponent}: {opponent ? (onlineState.opponentOnline ? t.meOnline : t.meOffline) : t.waiting}
+              {opponent ? ` (${opponent.nickname})` : ""}
+            </p>
           </div>
-        )}
+          <div className="h-px bg-slate-700/70" />
 
-        {roomId && !joined && (
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleJoinRoom}
-              disabled={busy || !playerKey}
-              className="rounded border border-emerald-300 bg-emerald-300/20 px-4 py-2 text-[10px] uppercase tracking-[0.14em] text-emerald-100 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-900 disabled:text-slate-500"
-            >
-              참가
-            </button>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="nickname" className="text-[10px] uppercase tracking-[0.12em] text-slate-300">
+              {t.nickname}
+            </label>
+            <input
+              id="nickname"
+              value={nickname}
+              onChange={(event) => setNickname(event.target.value)}
+              placeholder={t.nicknamePlaceholder}
+              className="border-0 border-b border-slate-600 bg-black px-0 py-2 text-sm text-slate-100 focus:border-cyan-300 focus:outline-none"
+            />
           </div>
-        )}
 
-        {roomId && (
-          <div className="mb-4 rounded border border-slate-700 bg-slate-950/60 p-3 text-[10px] text-slate-300">
-            <p className="mb-2 uppercase tracking-[0.12em]">초대 링크</p>
-            <p className="mb-2 break-all font-mono text-[11px] text-cyan-100">{inviteLink}</p>
-            <button
-              type="button"
-              onClick={async () => {
-                if (!inviteLink) {
-                  return;
-                }
-                try {
-                  await navigator.clipboard.writeText(inviteLink);
-                  setMessage("초대 링크를 클립보드에 복사했습니다.");
-                } catch {
-                  setMessage("클립보드 복사에 실패했습니다. 링크를 직접 복사해 주세요.");
-                }
-              }}
-              className="rounded border border-slate-500 px-3 py-1 uppercase tracking-[0.12em] text-slate-200"
-            >
-              링크 복사
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {!roomId && (
+              <PixelButton tone="cyan" onClick={handleCreateRoom} disabled={busy || !playerKey}>
+                {t.createRoom}
+              </PixelButton>
+            )}
+
+            {roomId && !joined && (
+              <PixelButton tone="emerald" onClick={handleJoinRoom} disabled={busy || !playerKey}>
+                {t.joinRoom}
+              </PixelButton>
+            )}
+
+            {roomId && (
+              <PixelButton
+                tone="slate"
+                onClick={async () => {
+                  if (!inviteLink) {
+                    return;
+                  }
+                  try {
+                    await navigator.clipboard.writeText(inviteLink);
+                    setMessage(t.copyDone);
+                  } catch {
+                    setMessage(t.copyFailed);
+                  }
+                }}
+              >
+                {t.copyLink}
+              </PixelButton>
+            )}
           </div>
-        )}
 
-        <p className="text-[10px] uppercase tracking-[0.12em] text-slate-300">
-          {busy
-            ? "요청 처리 중..."
-            : loading
-              ? "최신 상태 동기화 중..."
-              : message ?? error ?? (room?.status === "waiting" ? "상대를 기다리는 중입니다." : "준비 완료")}
-        </p>
-      </section>
+          {roomId && (
+            <div className="space-y-1 text-[10px] text-slate-300">
+              <p className="uppercase tracking-[0.12em] text-slate-400">{t.inviteLink}</p>
+              <p className="break-all font-mono text-[11px] text-cyan-100">{inviteLink}</p>
+            </div>
+          )}
+
+          <p className="text-[10px] uppercase tracking-[0.12em] text-slate-300">
+            {busy
+              ? t.roomRequesting
+              : loading
+                ? t.roomSyncing
+                : message ?? error ?? (room?.status === "waiting" ? t.roomWaitingOpponent : t.roomReady)}
+          </p>
+        </PixelPanel>
+      )}
 
       {joined && room?.status === "waiting" && (
-        <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 sm:p-6">
-          <h2 className="mb-2 text-xs uppercase tracking-[0.18em] text-cyan-200">Waiting Room</h2>
-          <p className="text-[11px] text-slate-300">두 번째 플레이어가 참가하면 자동으로 게임이 시작됩니다.</p>
-        </section>
+        <PixelPanel tone="amber" className="space-y-2">
+          <h2 className="text-xs uppercase tracking-[0.16em] text-amber-100">{t.waitingRoom}</h2>
+          <p className="text-[11px] text-slate-300">{t.waitingRoomDesc}</p>
+        </PixelPanel>
       )}
 
       {joined && isPlaying && onlineGameState && (
-        <section className="rounded-xl border border-cyan-300/35 bg-slate-900/80 p-4 sm:p-6">
-          <div className="mb-4 grid gap-2 rounded-lg border border-slate-700/70 bg-slate-950/70 p-3 text-[10px] uppercase tracking-[0.12em] sm:grid-cols-4">
-            <p>Round: {Math.min(onlineGameState.turnNo, YACHT_CATEGORIES.length * 2)}</p>
-            <p>Turn: Seat {onlineGameState.turnSeat}</p>
-            <p>Total (Me): {myTotal}</p>
-            <p>Total (Opponent): {opponentTotal}</p>
-          </div>
-
-          <div className="mb-4 grid grid-cols-5 gap-2">
-            {onlineGameState.dice.map((value, index) => {
-              const held = onlineGameState.holds[index];
-              const canToggle = Boolean(isMyTurn && onlineGameState.rollsUsed > 0 && onlineGameState.phase === "scoring");
-              return (
-                <button
-                  key={`die-${index}`}
-                  type="button"
+        <YachtLayout
+          top={
+            <ArcadeHud
+              leftTitle={t.playerScore}
+              leftScore={myTotal}
+              rightTitle={t.rivalScore}
+              rightScore={opponentTotal}
+              centerSlot={
+                <PixelButton
+                  tone="amber"
                   onClick={() => {
-                    void handleToggleHold(index);
+                    void handleRoll();
                   }}
-                  disabled={!canToggle || busy}
-                  className={`rounded-lg border px-2 py-4 text-center text-lg ${
-                    held ? "border-emerald-300 bg-emerald-300/20 text-emerald-100" : "border-slate-600 bg-slate-900"
-                  } ${canToggle && !busy ? "cursor-pointer" : "cursor-not-allowed opacity-80"}`}
-                  aria-pressed={held}
+                  disabled={!isMyTurn || onlineGameState.rollsUsed >= 3 || onlineGameState.phase === "finished" || busy}
+                  className="min-w-[180px] rounded-[10px] border-[4px] border-[#cc8200] px-7 py-2 text-[34px] leading-none tracking-[0.05em] shadow-[0_7px_0_#613100] active:translate-y-[3px] active:shadow-[0_3px_0_#613100] sm:min-w-[230px] sm:px-10 sm:py-3 sm:text-[48px]"
                 >
-                  <span className="block">{value}</span>
-                  <span className="block pt-1 text-[9px] uppercase tracking-[0.11em] text-slate-300">{held ? "Hold" : "Free"}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                void handleRoll();
+                  {`${t.roll} ${Math.max(0, 3 - onlineGameState.rollsUsed)}`}
+                </PixelButton>
+              }
+              activeSide={isMyTurn ? "left" : "right"}
+              statusLabel={
+                onlineGameState.phase === "finished"
+                  ? t.gameOver
+                  : isMyTurn
+                    ? t.youLabel
+                    : t.rivalLabel
+              }
+              rightSlot={
+                <p className="text-[11px] uppercase tracking-[0.06em] text-slate-200">
+                  {t.roomLabel} {shortRoomId} • {t.seatLabel} {myFinalSeat ? `#${myFinalSeat}` : "-"} • {t.turnLabel}{" "}
+                  #{onlineGameState.turnSeat} •{" "}
+                  {opponent ? (onlineState.opponentOnline ? t.rivalOnline : t.rivalOffline) : `${t.rivalLabel} ${t.waiting}`}
+                </p>
+              }
+              detailsPanel={{
+                summary: t.roomInviteDetails,
+                content: (
+                  <div className="space-y-2 text-[11px] text-slate-200">
+                    <p className="font-mono text-[10px] text-cyan-200">
+                      {t.roomId}: {roomId}
+                    </p>
+                    <p className="break-all font-mono text-[10px] text-cyan-100">{inviteLink}</p>
+                    <div className="flex items-center gap-2">
+                      <PixelButton
+                        tone="slate"
+                        onClick={async () => {
+                          if (!inviteLink) {
+                            return;
+                          }
+                          try {
+                            await navigator.clipboard.writeText(inviteLink);
+                            setMessage(t.copyDone);
+                          } catch {
+                            setMessage(t.copyFailed);
+                          }
+                        }}
+                      >
+                        {t.copyLink}
+                      </PixelButton>
+                      <span className="text-[10px] uppercase tracking-[0.08em] text-slate-400">
+                        {t.opponent}: {opponent?.nickname ?? t.waiting}
+                      </span>
+                    </div>
+                  </div>
+                ),
               }}
-              disabled={!isMyTurn || onlineGameState.rollsUsed >= 3 || onlineGameState.phase === "finished" || busy}
-              className="rounded border border-cyan-300 bg-cyan-300/20 px-4 py-2 text-[10px] uppercase tracking-[0.14em] text-cyan-100 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-900 disabled:text-slate-500"
-            >
-              Roll ({Math.max(0, 3 - onlineGameState.rollsUsed)} left)
-            </button>
-            <p className="text-[10px] uppercase tracking-[0.11em] text-slate-300">
-              {onlineGameState.phase === "finished"
-                ? "게임 종료"
-                : isMyTurn
-                  ? "내 턴: 주사위를 굴리거나 카테고리를 확정하세요."
-                  : "상대 턴 진행 중"}
-            </p>
-          </div>
-
-          <div className="overflow-x-auto rounded-lg border border-slate-700">
-            <table className="min-w-full border-collapse text-[10px] uppercase tracking-[0.11em]">
-              <thead className="bg-slate-900">
-                <tr>
-                  <th className="border-b border-slate-700 px-3 py-2 text-left">Category</th>
-                  <th className="border-b border-slate-700 px-3 py-2 text-left">Me</th>
-                  <th className="border-b border-slate-700 px-3 py-2 text-left">Opponent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {YACHT_CATEGORIES.map((category) => {
-                  const myLocked = myScoreCard[category];
-                  const oppLocked = opponentScoreCard[category];
-                  const canPick = selectableCategories.includes(category);
-                  const preview = calculateCategoryScore(onlineGameState.dice, category);
-                  return (
-                    <tr key={category} className={canPick ? "bg-emerald-300/10" : "bg-slate-950/40 odd:bg-slate-900/30"}>
-                      <td className="border-b border-slate-800 px-3 py-2">{category}</td>
-                      <td className="border-b border-slate-800 px-3 py-2">
-                        {myLocked !== null ? (
-                          <span className="text-cyan-100">{myLocked}</span>
-                        ) : canPick ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void handleScore(category);
-                            }}
-                            disabled={busy}
-                            className="rounded border border-emerald-300 bg-emerald-300/25 px-2 py-1 text-emerald-100 disabled:opacity-60"
-                          >
-                            Take {preview}
-                          </button>
-                        ) : (
-                          <span className="text-slate-500">-</span>
-                        )}
-                      </td>
-                      <td className="border-b border-slate-800 px-3 py-2">
-                        {oppLocked !== null ? <span className="text-amber-100">{oppLocked}</span> : <span>-</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
+            />
+          }
+          middle={
+            <>
+              <DiceRow
+                dice={onlineGameState.dice}
+                holds={onlineGameState.holds}
+                canToggle={Boolean(isMyTurn && onlineGameState.rollsUsed > 0 && onlineGameState.phase === "scoring")}
+                busy={busy}
+                onToggle={(index) => {
+                  void handleToggleHold(index);
+                }}
+              />
+            </>
+          }
+          bottom={
+            <ScoreBoard
+              locale={locale}
+              categoryLabel={t.categoryLabel}
+              hoverHint={t.hoverHint}
+              categories={YACHT_CATEGORIES}
+              youLabel={t.youLabel}
+              opponentLabel={t.rivalLabel}
+              youCard={myScoreCard}
+              opponentCard={opponentScoreCard}
+              previewDice={onlineGameState.dice}
+              previewEnabled={Boolean(isMyTurn && onlineGameState.rollsUsed > 0 && onlineGameState.phase !== "finished")}
+              selectable={selectableCategories}
+              onSelect={(category) => {
+                void handleScore(category);
+              }}
+              selectDisabled={busy}
+            />
+          }
+        />
       )}
     </div>
   );

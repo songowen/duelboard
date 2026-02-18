@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import OnlineClient from "@/app/games/yacht-dice/online/online-client";
+import { getMessages } from "@/lib/i18n";
+import { getRequestLocale } from "@/lib/i18n-server";
 
 export const metadata: Metadata = {
   title: "Yacht Dice Online",
@@ -8,10 +10,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/games/yacht-dice/online" },
 };
 
-export default function YachtDiceOnlinePage() {
+export default async function YachtDiceOnlinePage() {
+  const locale = await getRequestLocale();
+  const t = getMessages(locale).yachtOnline;
   return (
-    <Suspense fallback={<div className="rounded-xl border border-slate-700 bg-slate-900/70 p-6 text-sm text-slate-300">Loading...</div>}>
-      <OnlineClient />
+    <Suspense fallback={<div className="p-6 text-sm text-slate-300">{t.loading}</div>}>
+      <OnlineClient locale={locale} text={t} />
     </Suspense>
   );
 }
