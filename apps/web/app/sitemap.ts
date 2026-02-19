@@ -3,7 +3,7 @@ import { getAllPosts } from "@/lib/blog";
 import { gameRegistry, getGameModeHref } from "@/lib/registry";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://duelboard.gg";
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://duelboard.songowen.cloud";
   const baseStaticRoutes = [
     "",
     "/games",

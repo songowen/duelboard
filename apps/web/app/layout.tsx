@@ -9,7 +9,7 @@ import { getMessages } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n-server";
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://duelboard.gg";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://duelboard.songowen.cloud";
 const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
 export const metadata: Metadata = {
