@@ -210,6 +210,10 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function fallbackNickname(playerKey: string): string {
+  return `PLAYER-${playerKey.slice(0, 4).toUpperCase()}`;
+}
+
 export function OnlineContainer({ locale, text }: OnlineContainerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -230,6 +234,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
   const [celebrationOpen, setCelebrationOpen] = useState(false);
   const [winnerCelebrationOpen, setWinnerCelebrationOpen] = useState(false);
   const rematchStartingRef = useRef(false);
+  const autoCreateRequestedRef = useRef(false);
   const celebratedVersionRef = useRef<number | null>(null);
   const winnerCelebratedVersionRef = useRef<number | null>(null);
   const roomUiChannelRef = useRef<RealtimeChannel | null>(null);
@@ -237,9 +242,11 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
 
   useEffect(() => {
     const nextPlayerKey = getOrCreatePlayerKey();
-    const savedNickname = window.localStorage.getItem(STORAGE_NICKNAME) ?? "";
+    const savedNickname = window.localStorage.getItem(STORAGE_NICKNAME)?.trim();
+    const nextNickname = savedNickname || fallbackNickname(nextPlayerKey);
     setPlayerKey(nextPlayerKey);
-    setNickname(savedNickname);
+    setNickname(nextNickname);
+    window.localStorage.setItem(STORAGE_NICKNAME, nextNickname);
     setOrigin(window.location.origin);
   }, []);
 
@@ -357,11 +364,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
       return;
     }
 
-    const trimmedNickname = nickname.trim();
-    if (!trimmedNickname) {
-      setMessage(t.requireNickname);
-      return;
-    }
+    const trimmedNickname = nickname.trim() || fallbackNickname(playerKey);
 
     setBusy(true);
     setMessage(null);
@@ -402,6 +405,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
     } catch (createError) {
       const rawMessage = createError instanceof Error ? createError.message : "create_room_failed";
       setMessage(normalizeRpcError(rawMessage, t));
+      autoCreateRequestedRef.current = false;
     } finally {
       setBusy(false);
     }
@@ -416,11 +420,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
       return;
     }
 
-    const trimmedNickname = nickname.trim();
-    if (!trimmedNickname) {
-      setMessage(t.requireNickname);
-      return;
-    }
+    const trimmedNickname = nickname.trim() || fallbackNickname(playerKey);
 
     setBusy(true);
     setMessage(null);
@@ -466,10 +466,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
       return;
     }
 
-    const savedNickname = nickname.trim();
-    if (!savedNickname) {
-      return;
-    }
+    const savedNickname = nickname.trim() || fallbackNickname(playerKey);
 
     let cancelled = false;
 
@@ -507,6 +504,20 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
       cancelled = true;
     };
   }, [autoJoinRequested, autoPlayRequested, joined, nickname, playerKey, roomId, router, t.invalidRoomId]);
+
+  useEffect(() => {
+    if (roomId || !playerKey || joined || autoCreateRequestedRef.current) {
+      return;
+    }
+    autoCreateRequestedRef.current = true;
+    void handleCreateRoom();
+  }, [handleCreateRoom, joined, playerKey, roomId]);
+
+  useEffect(() => {
+    if (roomId) {
+      autoCreateRequestedRef.current = false;
+    }
+  }, [roomId]);
 
   const handleRoll = useCallback(async () => {
     if (!onlineGameState) {
@@ -862,26 +873,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
             {opponent ? ` (${opponent.nickname})` : ""}
           </p>
 
-          <div className="flex flex-col gap-2">
-            <label htmlFor="nickname" className="text-[10px] uppercase tracking-[0.12em] text-slate-300">
-              {t.nickname}
-            </label>
-            <input
-              id="nickname"
-              value={nickname}
-              onChange={(event) => setNickname(event.target.value)}
-              placeholder={t.nicknamePlaceholder}
-              className="border-0 border-b border-slate-600 bg-black px-0 py-2 text-sm text-slate-100 focus:border-cyan-300 focus:outline-none"
-            />
-          </div>
-
           <div className="flex flex-wrap items-center gap-2">
-            {!roomId && (
-              <PixelButton tone="cyan" onClick={handleCreateRoom} disabled={busy || !playerKey}>
-                {t.createRoom}
-              </PixelButton>
-            )}
-
             {roomId && !joined && (
               <PixelButton tone="emerald" onClick={handleJoinRoom} disabled={busy || !playerKey}>
                 {t.readyToPlay}
