@@ -1,0 +1,37 @@
+module.exports = {
+  types: [
+    { value: "feat", name: "feat:     기능 추가" },
+    { value: "fix", name: "fix:      버그 수정" },
+    { value: "docs", name: "docs:     문서 변경" },
+    { value: "style", name: "style:    코드 포맷/스타일 변경(동작 변화 없음)" },
+    { value: "refactor", name: "refactor: 리팩터링(동작 변화 없음)" },
+    { value: "perf", name: "perf:     성능 개선" },
+    { value: "test", name: "test:     테스트 추가/수정" },
+    { value: "chore", name: "chore:    빌드/도구/환경 정리" },
+    { value: "ci", name: "ci:       CI 설정 변경" },
+  ],
+  scopes: [
+    { name: "yacht" },
+    { name: "online" },
+    { name: "ui" },
+    { name: "i18n" },
+    { name: "infra" },
+    { name: "ci" },
+    { name: "deps" },
+  ],
+  allowCustomScopes: true,
+  allowBreakingChanges: ["feat", "fix", "refactor"],
+  subjectLimit: 100,
+  messages: {
+    type: "변경 유형(type)을 선택하세요:",
+    scope: "scope를 선택하세요 (예: yacht, online, ui, i18n, infra):",
+    customScope: "직접 scope를 입력하세요 (소문자 권장):",
+    subject: "제목을 입력하세요 (한국어 한 줄 요약, 동사형 시작):\n",
+    body:
+      "본문을 입력하세요 (선택). 아래 섹션 형식을 권장합니다.\n\n배경:\n- \n\n변경:\n- \n\n검증:\n- \n",
+    breaking: "BREAKING CHANGE가 있으면 입력하세요 (없으면 엔터):\n",
+    footer: "푸터를 입력하세요 (예: Refs: #123 또는 링크, 없으면 엔터):\n",
+    confirmCommit: "이 내용으로 커밋하시겠습니까?",
+  },
+  skipQuestions: [],
+};

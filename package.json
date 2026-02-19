@@ -1,0 +1,9 @@
+{
+  "name": "duelboard",
+  "private": true,
+  "scripts": {
+    "commit": "pnpm -C apps/web exec cz",
+    "setup:hooks": "./apps/web/node_modules/.bin/husky .husky",
+    "setup:gitmessage": "git config commit.template .gitmessage.txt"
+  }
+}

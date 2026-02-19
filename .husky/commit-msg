@@ -1,0 +1,8 @@
+pnpm -C apps/web exec commitlint --edit "$1" || {
+  echo ""
+  echo "커밋 메시지 규칙 위반입니다."
+  echo "형식: <type>(<scope>): <한국어 한 줄 요약>"
+  echo "허용 type: feat|fix|docs|style|refactor|perf|test|chore|ci"
+  echo "상세: docs/commit-convention.md"
+  exit 1
+}

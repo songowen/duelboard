@@ -308,8 +308,8 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
   const opponentRematchReady = Boolean(opponent && rematchVotes[opponent.player_key]);
   const bothRematchReady = Boolean(opponent && myRematchReady && opponentRematchReady);
   const canShowBoard = Boolean(joined && onlineGameState && (isFinished || (isPlaying && bothLobbyReady)));
-  const myScoreTitle = `${(me?.nickname ?? t.youLabel).toUpperCase()} SCORE`;
-  const opponentScoreTitle = `${(opponent?.nickname ?? t.rivalLabel).toUpperCase()} SCORE`;
+  const myScoreTitle = (me?.nickname ?? t.youLabel).toUpperCase();
+  const opponentScoreTitle = (opponent?.nickname ?? t.rivalLabel).toUpperCase();
   const winnerHeadline =
     myTotal === opponentTotal ? t.draw : myTotal > opponentTotal ? `${t.youWin}!` : `${t.rivalWins}!`;
 
@@ -801,7 +801,7 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
           throw rpcError;
         }
 
-        const row = (data as Array<{ room_id: string }> | null)?.[0];
+        const row = (data as Array<{ room_id: string; seat?: number }> | null)?.[0];
         if (!row?.room_id || !isUuid(row.room_id)) {
           throw new Error("failed_to_create_room");
         }
@@ -815,13 +815,13 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
         }
 
         setMessage(t.rematchStarting);
-        setJoined(false);
-        setMySeat(null);
+        setJoined(true);
+        setMySeat(row.seat === 2 ? 2 : 1);
         setLobbyReadyVotes({});
         setRematchVotes({});
         setRematchBusy(false);
         rematchStartingRef.current = false;
-        router.replace(`/games/yacht-dice/online?room=${row.room_id}&autojoin=1&autoplay=1`);
+        router.replace(`/games/yacht-dice/online?room=${row.room_id}&autoplay=1`);
       } catch (rematchError) {
         const rawMessage = rematchError instanceof Error ? rematchError.message : "rematch_failed";
         setMessage(normalizeRpcError(rawMessage, t));
@@ -872,6 +872,22 @@ export function OnlineContainer({ locale, text }: OnlineContainerProps) {
             {t.opponent}: {opponent ? (onlineState.opponentOnline ? t.meOnline : t.meOffline) : t.waiting}
             {opponent ? ` (${opponent.nickname})` : ""}
           </p>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="waiting-nickname" className="text-[10px] uppercase tracking-[0.12em] text-slate-300">
+              {t.nickname}
+            </label>
+            <input
+              id="waiting-nickname"
+              value={nickname}
+              onChange={(event) => {
+                setNickname(event.target.value);
+                window.localStorage.setItem(STORAGE_NICKNAME, event.target.value);
+              }}
+              placeholder={t.nicknamePlaceholder}
+              className="border-0 border-b border-slate-600 bg-black px-0 py-2 text-sm text-slate-100 focus:border-cyan-300 focus:outline-none"
+            />
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {roomId && !joined && (

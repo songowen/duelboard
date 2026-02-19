@@ -1,0 +1,2 @@
+# CI에서 lint/typecheck/build를 수행하므로 pre-commit은 가볍게 유지합니다.
+exit 0
