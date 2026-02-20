@@ -7,10 +7,20 @@ export const metadata: Metadata = {
   title: "Yacht Dice VS AI",
   description: "Play Yacht Dice Classic A against local Easy/Normal AI on Duelboard.",
   alternates: { canonical: "/games/yacht-dice/vs-ai" },
+  openGraph: {
+    title: "Yacht Dice VS AI",
+    description: "Play Yacht Dice Classic A against local Easy/Normal AI on Duelboard.",
+    url: "/games/yacht-dice/vs-ai",
+  },
 };
 
 export default async function YachtDiceVsAiPage() {
   const locale = await getRequestLocale();
   const t = getMessages(locale).yachtVsAi;
-  return <VsAiContainer locale={locale} text={t} />;
+  return (
+    <>
+      <h1 className="sr-only">Yacht Dice VS AI</h1>
+      <VsAiContainer locale={locale} text={t} />
+    </>
+  );
 }

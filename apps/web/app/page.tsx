@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   title: "Home",
   description: "Duelboard landing page with featured games and quick access.",
   alternates: { canonical: "/" },
+  openGraph: {
+    title: "Duelboard",
+    description: "Duelboard landing page with featured games and quick access.",
+    url: "/",
+  },
 };
 
 export default async function HomePage() {
@@ -17,6 +22,7 @@ export default async function HomePage() {
   const t = getMessages(locale);
   return (
     <div className="relative bg-black pb-16">
+      <h1 className="sr-only">Duelboard 2-player web arcade platform</h1>
       <section className="relative z-10 flex min-h-[90vh] items-center px-0 pt-6 sm:min-h-[92vh] sm:px-2">
         <div className="mx-auto max-w-6xl">
           <div className="relative mx-auto w-[92vw] max-w-[520px] pb-16 sm:pb-20 md:w-[70vw] md:max-w-[980px]">

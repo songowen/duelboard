@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   title: "Sea Battle Online",
   description: "Sea Battle online scaffold page.",
   alternates: { canonical: "/games/sea-battle/online" },
+  openGraph: {
+    title: "Sea Battle Online",
+    description: "Sea Battle online scaffold page.",
+    url: "/games/sea-battle/online",
+  },
 };
 
 export default async function SeaBattleOnlinePage() {

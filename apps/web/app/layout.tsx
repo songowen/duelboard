@@ -11,6 +11,7 @@ import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://duelboard.songowen.cloud";
 const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? process.env.GOOGLE_SITE_VERIFICATION;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -28,14 +29,19 @@ export const metadata: Metadata = {
     url: "/",
     siteName: "Duelboard",
     type: "website",
-    images: ["/opengraph-image"],
+    images: ["/icon.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Duelboard",
     description: "Retro-style duel game portal with quick browser games and updates.",
-    images: ["/opengraph-image"],
+    images: ["/icon.png"],
   },
+  verification: googleSiteVerification
+    ? {
+        google: googleSiteVerification,
+      }
+    : undefined,
 };
 
 export default async function RootLayout({

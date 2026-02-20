@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   title: "Games",
   description: "Duelboard game listing page.",
   alternates: { canonical: "/games" },
+  openGraph: {
+    title: "Games",
+    description: "Duelboard game listing page.",
+    url: "/games",
+  },
 };
 
 export default async function GamesPage() {

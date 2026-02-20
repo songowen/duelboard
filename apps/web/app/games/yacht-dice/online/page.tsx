@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   title: "Yacht Dice Online",
   description: "Create and join a 2-player online Yacht Dice room on Duelboard.",
   alternates: { canonical: "/games/yacht-dice/online" },
+  openGraph: {
+    title: "Yacht Dice Online",
+    description: "Create and join a 2-player online Yacht Dice room on Duelboard.",
+    url: "/games/yacht-dice/online",
+  },
 };
 
 export default async function YachtDiceOnlinePage() {
